@@ -457,6 +457,10 @@ def dq_20G27(t, q, *args):
      states, X_xdelta, C0ab, component_names, num_nodes, 
      component_nodes, component_father, Ahat, B0hat, B1hat, Chat, D0hat, D1hat, eta_a_jig) = args[0]
 
+    # flip = jnp.diag(jnp.array([1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1], dtype=float))
+    # q1 = q[states['q1']] @ flip
+    # q2 = q[states['q2']] @ flip
+
     q1 = q[states['q1']]
     q2 = q[states['q2']]
     q0 = -q2 / omega
@@ -477,6 +481,9 @@ def dq_20G27(t, q, *args):
     eta_s = xloads.eta_statespacestructure(q0, q1, ql, Chat, D0hat, D1hat)
 
     F1, F2 = common.f_12(omega, gamma1, gamma2, q1, q2)
+    # F1 @= flip
+    # F2 @= flip
+
     F1 += eta_s + eta_g + eta_a_jig
 
     Fl = xloads.lags_statespacestructure(q0, q1, ql, Ahat, B0hat, B1hat)
