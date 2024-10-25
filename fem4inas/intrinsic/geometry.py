@@ -8,10 +8,10 @@ from typing import Sequence, Any, Optional
 from fem4inas.utils import flatten_list
 from collections.abc import Iterable
 
-def find_fem(folder, Ka_name, Ma_name, grid):
 
+def find_fem(folder, Ka_name, Ma_name, grid):
     #TODO: add assertions
-    if folder is not None:        
+    if folder is not None:
         Ka_path = list(pathlib.Path(folder).glob(f"**/*{Ka_name}"))[0].name
         Ma_path = list(pathlib.Path(folder).glob(f"**/*{Ma_name}"))[0].name
         if isinstance(grid, str):
@@ -23,6 +23,7 @@ def find_fem(folder, Ka_name, Ma_name, grid):
         Ma_path = Ma_name
         grid_path = grid
     return Ka_path, Ma_path, grid_path
+
 
 def list2dict(obj: list | dict):
     """Converts a list into a dictionary
@@ -47,14 +48,15 @@ def list2dict(obj: list | dict):
         out = obj
     return out
 
+
 def build_grid(grid: str | jnp.ndarray | pd.DataFrame | None,
                X: Optional[jnp.ndarray],
                fe_order: list[int] | jnp.ndarray | None,
                fe_order_start: int,
                component_vect: Optional[list[str]]) -> tuple[pd.DataFrame,
-                                                     jnp.ndarray,
-                                                     np.ndarray,
-                                                     list[str]]:
+jnp.ndarray,
+np.ndarray,
+list[str]]:
     if grid is None:
         assert X is not None, "X needs to be provided \
         when no grid file is given"
@@ -68,26 +70,27 @@ def build_grid(grid: str | jnp.ndarray | pd.DataFrame | None,
 
         df_grid = pd.read_csv(grid, comment="#", sep=" ",
                               names=['x1', 'x2', 'x3', 'fe_order', 'component'])
-        
+
     elif isinstance(grid, jnp.ndarray):
         df_grid = pd.DataFrame(dict(x1=grid[:, 0], x2=grid[:, 1], x3=grid[:, 2],
                                     fe_order=grid[:, 3], component=grid[:, 4]))
-    
+
     elif isinstance(grid, pd.DataFrame):
         df_grid = grid
 
     if not isinstance(X, jnp.ndarray):
-        X = jnp.array(df_grid.to_numpy()[:,:3].astype('float'))
+        X = jnp.array(df_grid.to_numpy()[:, :3].astype('float'))
     if not isinstance(fe_order, jnp.ndarray):
-        fe_order = df_grid.to_numpy()[:,3:4].astype('int').flatten()
+        fe_order = df_grid.to_numpy()[:, 3:4].astype('int').flatten()
         fe_order -= fe_order_start
     if not isinstance(component_vect, list):
         component_vect = list(df_grid.component.astype('str'))
     df_grid.fe_order -= fe_order_start
     return df_grid, X, fe_order, component_vect
 
+
 def compute_clamped(fe_order: list[int]) -> tuple[list[int], dict[str, list],
-                                             dict[str, list], int]:
+dict[str, list], int]:
     """Computes the clamped characteristics of the model
 
 
@@ -122,20 +125,20 @@ def compute_clamped(fe_order: list[int]) -> tuple[list[int], dict[str, list],
     for i in fe_order:
         if i < 0:
             fe_node = str(abs(i))
-            if len(fe_node) < 6: # clamped node, format = -1 (node 0),
+            if len(fe_node) < 6:  # clamped node, format = -1 (node 0),
                 #-5 (node 4) etc
                 clamped_nodes.append(abs(i) - 1)
                 freeDoF[clamped_nodes[-1]] = []
                 clampedDoF[clamped_nodes[-1]] = list(range(6))
                 total_clampedDoF += 6
-            elif len(fe_node) > 6: #format = -1010117 with
+            elif len(fe_node) > 6:  #format = -1010117 with
                 # 101011 being clamped/free DoF and abs(-7 + 1)=6
                 # being the multibody node
                 clamped_nodes.append(int(fe_node[6:]) - 1)
-                freeDoF[clamped_nodes[-1]] = [i for i,j in enumerate(fe_node[:6]) if j =='0']
-                clampedDoF[clamped_nodes[-1]] = [i for i,j in enumerate(fe_node[:6]) if j =='1']
+                freeDoF[clamped_nodes[-1]] = [i for i, j in enumerate(fe_node[:6]) if j == '0']
+                clampedDoF[clamped_nodes[-1]] = [i for i, j in enumerate(fe_node[:6]) if j == '1']
                 total_clampedDoF += len(clampedDoF[clamped_nodes[-1]])
-            else: #len(fe_node) == 6, format = -101011, multibody node assummed at 0
+            else:  #len(fe_node) == 6, format = -101011, multibody node assummed at 0
                 clamped_nodes.append(0)
                 # picks the index of free DoF
                 freeDoF[0] = [i for i, j in enumerate(fe_node) if j == '0']
@@ -144,8 +147,9 @@ def compute_clamped(fe_order: list[int]) -> tuple[list[int], dict[str, list],
 
     return clamped_nodes, freeDoF, clampedDoF, total_clampedDoF
 
+
 def compute_component_father(component_connectivity:
-                             dict[str, list]) -> tuple[list[str], dict[str, str]]:
+dict[str, list]) -> tuple[list[str], dict[str, str]]:
     """Calculates the father component of each component
 
     Assuming an outwards flow from the first node, every path in the
@@ -176,6 +180,7 @@ def compute_component_father(component_connectivity:
                 component_father[str(v)] = k
     return component_names, component_father
 
+
 @dispatch(list)
 def compute_component_nodes(components_range: list[str]) -> dict[str, list]:
     """Links components to their nodes 
@@ -202,6 +207,7 @@ def compute_component_nodes(components_range: list[str]) -> dict[str, list]:
         component_nodes[ci].append(i)
     return component_nodes
 
+
 @dispatch(pd.DataFrame)
 def compute_component_nodes(df: pd.DataFrame) -> dict[str, list]:
     """Links components to their nodes 
@@ -227,6 +233,7 @@ def compute_component_nodes(df: pd.DataFrame) -> dict[str, list]:
     for ci in components:
         component_nodes[ci] = list(group.get_group(ci).index)
     return component_nodes
+
 
 def compute_prevnode(components_range: Sequence[str],
                      component_nodes: dict[str, list[int]],
@@ -258,12 +265,12 @@ def compute_prevnode(components_range: Sequence[str],
     j = 0
     current_component = None
     for i, ci in enumerate(components_range):
-        if i==0:
+        if i == 0:
             prevnodes.append(0)
             #j += 1
             current_component = ci
-        elif ci != current_component: # change in component
-            if component_father[ci] is None: # component starting at first node
+        elif ci != current_component:  # change in component
+            if component_father[ci] is None:  # component starting at first node
                 prevnodes.append(0)
                 current_component = ci
                 j = 0
@@ -276,9 +283,10 @@ def compute_prevnode(components_range: Sequence[str],
             j += 1
     return prevnodes
 
+
 def compute_component_children(component_name: str,
                                component_connectivity: dict[str, list[str | int]],
-                               chain:Optional[list] = None) -> list[str]:
+                               chain: Optional[list] = None) -> list[str]:
     """Computes the children components on any given component
 
     Parameters
@@ -302,7 +310,7 @@ def compute_component_children(component_name: str,
 
     if chain is None:
         chain = list()
-    component_name = str(component_name) # in case components are defined with numbers
+    component_name = str(component_name)  # in case components are defined with numbers
     children_components = component_connectivity[component_name]
     if children_components is None or len(children_components) == 0:
         pass
@@ -311,6 +319,7 @@ def compute_component_children(component_name: str,
         for ci in children_components:
             compute_component_children(ci, component_connectivity, chain)
     return chain
+
 
 def compute_component_chain(component_names: list[str],
                             component_connectivity: dict[str, list[str | int]]
@@ -334,6 +343,7 @@ def compute_component_chain(component_names: list[str],
                        for k in component_names}
     return component_chain
 
+
 def compute_Maverage(prevnodes: Sequence[int], num_nodes: int) -> jnp.ndarray:
     """Calculates the matrix that averages between adjacent nodes
 
@@ -355,13 +365,14 @@ def compute_Maverage(prevnodes: Sequence[int], num_nodes: int) -> jnp.ndarray:
     """
 
     M = np.eye(num_nodes)
-    M[0,0] = 0. # first node should be made 0 since we have Nn - 1 elements:
+    M[0, 0] = 0.  # first node should be made 0 since we have Nn - 1 elements:
     # given a structure like *--o--*--o--*, tensors are given in '*', but
     # only the quantity at 'o' is of interest 
     for i in range(1, num_nodes):
         M[prevnodes[i], i] = 1
     M *= 0.5
     return jnp.array(M)
+
 
 def compute_Mdiff(prevnodes: Sequence[int],
                   num_nodes: int) -> jnp.ndarray:
@@ -385,10 +396,11 @@ def compute_Mdiff(prevnodes: Sequence[int],
     """
 
     M = np.eye(num_nodes)
-    M[0,0] = 0.
+    M[0, 0] = 0.
     for i in range(1, num_nodes):
         M[prevnodes[i], i] = -1
     return jnp.array(M)
+
 
 def compute_Mfe_order(fe_order: np.ndarray,
                       clamped_nodes: list[int],
@@ -443,6 +455,7 @@ def compute_Mfe_order(fe_order: np.ndarray,
 
     return jnp.array(M)
 
+
 def compute_Mloadpaths(components_range: list[str],
                        component_nodes: dict[str, list[int]],
                        component_chain: dict[str, list[str]],
@@ -481,13 +494,14 @@ def compute_Mloadpaths(components_range: list[str],
             j = 0
             current_component = ci
         ci_nodes = component_nodes[ci]
-        ci_children = component_chain[ci]        
+        ci_children = component_chain[ci]
         ci_children_nodes = flatten_list([component_nodes[k] for
                                           k in ci_children])
         M[ci_children_nodes, i] = 1.
         M[ci_nodes[j:], i] = 1
         j += 1
     return jnp.array(M)
+
 
 def convert_components(component_names: list[str],
                        component_nodes: dict[str, list[int]],

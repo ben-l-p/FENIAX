@@ -22,7 +22,7 @@ class Gust(ABC):
         NpxNt
         """
         ...
-        
+
     @abstractmethod
     def set_solution(self, sol):
         ...
@@ -51,13 +51,13 @@ class GustRogerMc(Gust):
         self.rho_inf = None
         self._set_flow()
         self._set_gust()
-        
+
     def _set_flow(self):
         self.u_inf = self.settings.aero.u_inf
         self.rho_inf = self.settings.aero.rho_inf
-        
+
     def _set_gust(self):
-        
+
         self.gust_step = self.settings.aero.gust.step
         self.gust_shift = self.settings.aero.gust.shift
         simulation_time = self.settings.t
@@ -84,7 +84,7 @@ class GustRogerMc(Gust):
         self.ntime = len(self.time)
         self.npanels = len(self.collocation_points)
         self._define_spanshape(self.settings.aero.gust.shape)
-        
+
     def _define_spanshape(self, shape):
 
         self.shape_span = getattr(Shapes, shape)
@@ -139,7 +139,7 @@ class GustRogerMc(Gust):
             filter_time = jnp.where((self.time >= delay) &
                                     (self.time <= delay +
                                      self.gust_totaltime), 1, 0)
-    
+
             gust = filter_time * (shape_span * normal *
                                   self.gust_intensity / (self.u_inf*2) *
                                   (1 - jnp.cos(coeff * (self.time - delay)))
@@ -154,7 +154,7 @@ class GustRogerMc(Gust):
                                )
             return gust, gust_dot, gust_ddot
 
-        f1  = jax.vmap(kernel, in_axes=(0,0), out_axes=(0,0,0)) 
+        f1  = jax.vmap(kernel, in_axes=(0,0), out_axes=(0,0,0))
         self.gust, self.gust_dot, self.gust_ddot = f1(self.collocation_points, self.normals)
         self._define_eta()
 
@@ -162,10 +162,10 @@ class GustRogerMc(Gust):
 
         if self.dihedral is not None:
             self.normals = self.dihedral
-    
+
     def set_solution(self, sol: solution.IntrinsicSolution,
                      sys_name: str):
-        
+
         sol.add_container('GustRoger', label="_" + sys_name,
                           w=self.gust,
                           wdot=self.gust_dot,
@@ -193,7 +193,7 @@ class GustRogerMc(Gust):
         self.Ql_wdot = jnp.tensordot(D3hat,  # NpxNmxNb
                                      self.gust_dot,  # NbxNt
                                      axes=(2,0))  # NpxNmxNt
-        
+
 @Registry.register("GustStatespaceMc")
 class GustStatespaceMc(Gust):
 
@@ -216,13 +216,13 @@ class GustStatespaceMc(Gust):
         self.rho_inf = None
         self._set_flow()
         self._set_gust()
-        
+
     def _set_flow(self):
         self.u_inf = self.settings.aero.u_inf
         self.rho_inf = self.settings.aero.rho_inf
-        
+
     def _set_gust(self):
-        
+
         self.gust_step = self.settings.aero.gust.step
         self.gust_shift = self.settings.aero.gust.shift
         simulation_time = self.settings.t
@@ -249,7 +249,7 @@ class GustStatespaceMc(Gust):
         self.ntime = len(self.time)
         self.npanels = len(self.collocation_points)
         self._define_spanshape(self.settings.aero.gust.shape)
-        
+
     def _define_spanshape(self, shape):
 
         self.shape_span = getattr(Shapes, shape)
@@ -266,7 +266,7 @@ class GustStatespaceMc(Gust):
             filter_time = jnp.where((self.time >= delay) &
                                     (self.time <= delay +
                                      self.gust_totaltime), 1, 0)
-    
+
             gust = filter_time * (shape_span * normal *
                                   self.gust_intensity / 2 *
                                   (1 - jnp.cos(2*jnp.pi*self.u_inf/self.gust_length * (self.time - delay)))
@@ -274,7 +274,7 @@ class GustStatespaceMc(Gust):
 
             return gust
 
-        f1  = jax.vmap(kernel, in_axes=(0,0), out_axes=(0)) 
+        f1 = jax.vmap(kernel, in_axes=(0, 0), out_axes=0)
         self.gust = f1(self.collocation_points, self.normals)
         self._define_eta()
 
@@ -282,17 +282,17 @@ class GustStatespaceMc(Gust):
 
         if self.dihedral is not None:
             self.normals = self.dihedral
-    
+
     def set_solution(self, sol: solution.IntrinsicSolution,
                      sys_name: str):
-        
+
         sol.add_container('GustStatespace', label="_" + sys_name,
                           w=self.gust,
                           x=self.time,
                           Bw_gust = self.Bw_gust,
                           Dw_gust = self.Dw_gust
                           )
-        
+
     def _define_eta(self):
         """
         NtxNm

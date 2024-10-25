@@ -159,9 +159,10 @@ class AeroStatespace(ModalAero):
             self.container['f_jig'] = jnp.zeros((6, self.sol.data.modes.phi1.shape[2]))
             self.container['eta_a_jig'] = jnp.zeros(self.sys.aero.ss_B0.shape[1])
         else:
-            f_jig = self.sys.aero.f_jig #6 x N+1
-            phi1 = self.sol.data.modes.phi1 #Nm x 6 x N+1
-            eta_a_jig = jnp.einsum('ijk,jk', phi1, f_jig)
+            phi1 = self.sol.data.modes.phi1
+            f_jig = self.sys.aero.f_jig
+
+            eta_a_jig = jnp.einsum('ijk, jk->i', phi1, f_jig)
 
             self.container['f_jig'] = f_jig
             self.container['eta_a_jig'] = eta_a_jig

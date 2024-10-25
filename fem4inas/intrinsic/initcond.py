@@ -35,7 +35,7 @@ mapper = dict(velocity=init_X1, # given a velocity field, and phi1, output q10s
 class Container:
 
     @staticmethod
-    def axial_parabolic(x0: jnp.array,
+    def axial_parabolic(x0: jnp.ndarray,
                         L: float,
                         fem:intrinsicmodal.Dfem,
                         *args, **kwags):

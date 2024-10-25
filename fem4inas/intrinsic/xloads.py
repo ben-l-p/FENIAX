@@ -115,7 +115,7 @@ def linear_interpolation3(t, x, data_tensor):
     f_interpol = weight_upper * f_upper + weight_lower  * f_lower
     return f_interpol
 
-@jax.jit
+# @jax.jit
 def eta_pointfollower(t, phi1, x, force_follower):
 
     f = linear_interpolation(t, x, force_follower)

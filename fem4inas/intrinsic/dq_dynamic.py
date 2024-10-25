@@ -36,6 +36,24 @@ def dq_20g11(t, q, *args):
     F = jnp.hstack([F1, F2])
     return F
 
+#@jax.jit
+def dq_20g11l(t, q, *args):
+    """Clamped structural dynamic follower point forces."""
+    
+    (omega, phi1, x,
+     force_follower, states) = args[0]
+
+    q1 = q[states['q1']]
+    q2 = q[states['q2']]
+    eta = xloads.eta_pointfollower(t,
+                                   phi1,
+                                   x,
+                                   force_follower)
+    F1, F2 = common.f_12l(omega, q1, q2)
+    F1 += eta
+    F = jnp.hstack([F1, F2])
+    return F
+
 def dq_20g121(t, q, *args):
     """Clamped structural dynamic dead point forces."""
 
@@ -270,6 +288,16 @@ def dq_20g273(t, q, *args):
     #Fl = Fl_tensor.reshape(num_modes * num_poles
     return jnp.hstack([F1, F2, Fl, F0])
 
+def dq_20g1l(t, q, *args):
+    """Clamped Structural linear dynamics, free vibrations."""
+
+    omega, states = args[0]
+    q1 = q[states['q1']]
+    q2 = q[states['q2']]
+    F1, F2 = common.f_12l(omega, q1, q2)
+    F = jnp.hstack([F1, F2])
+    return F
+
 #@partial(jax.jit, static_argnums=2)
 def dq_20G1(t, q, *args):
     """Clamped Structural dynamic gravity forces."""
@@ -450,16 +478,33 @@ def dq_20G21(t, q, *args):
     return jnp.hstack([F1, F2, Fl])
 
 # SHARPy
+def dq_20g27(t, q, *args):
+    """Clamped structure with statespace aero"""
+    # State space with no gust
+    (gamma1, gamma2, omega,
+     states, Ahat, B0hat, B1hat, Chat, D0hat, D1hat, eta_a_jig) = args[0]
+
+    q1 = q[states['q1']]
+    q2 = q[states['q2']]
+    q0 = -q2 / omega
+    ql = q[states['ql']]
+
+    eta_s = xloads.eta_statespacestructure(q0, q1, ql, Chat, D0hat, D1hat)
+
+    F1, F2 = common.f_12(omega, gamma1, gamma2, q1, q2)
+
+    F1 += eta_s + eta_a_jig
+
+    Fl = xloads.lags_statespacestructure(q0, q1, ql, Ahat, B0hat, B1hat)
+
+    return jnp.hstack([F1, F2, Fl])
+
 def dq_20G27(t, q, *args):
     """Clamped structure with gravity and statespace aero"""
     # State space with no gust
     (gamma1, gamma2, omega, phi1l, psi2l, force_gravity, 
      states, X_xdelta, C0ab, component_names, num_nodes, 
      component_nodes, component_father, Ahat, B0hat, B1hat, Chat, D0hat, D1hat, eta_a_jig) = args[0]
-
-    # flip = jnp.diag(jnp.array([1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1], dtype=float))
-    # q1 = q[states['q1']] @ flip
-    # q2 = q[states['q2']] @ flip
 
     q1 = q[states['q1']]
     q2 = q[states['q2']]
@@ -481,8 +526,6 @@ def dq_20G27(t, q, *args):
     eta_s = xloads.eta_statespacestructure(q0, q1, ql, Chat, D0hat, D1hat)
 
     F1, F2 = common.f_12(omega, gamma1, gamma2, q1, q2)
-    # F1 @= flip
-    # F2 @= flip
 
     F1 += eta_s + eta_g + eta_a_jig
 
@@ -524,13 +567,59 @@ def dq_20G27l(t, q, *args):
 
     return jnp.hstack([F1, F2, Fl])
 
+
+def dq_20g189(t, q, *args):
+    """Clamped structure with statespace aero and gust"""
+    # State space with gust
+    (gamma1, gamma2, omega, states, 
+     Ahat, B0hat, B1hat, Chat, D0hat, D1hat, eta_a_jig, xgust, F1gust, Flgust) = args[0]
+
+    q1 = q[states['q1']]
+    q2 = q[states['q2']]
+    q0 = -q2 / omega
+    ql = q[states['ql']]
+
+    eta_s = xloads.eta_statespacestructure(q0, q1, ql, Chat, D0hat, D1hat)
+    eta_gust = xloads.eta_statespacegust(t, xgust, F1gust)
+
+    F1, F2 = common.f_12(omega, gamma1, gamma2, q1, q2)
+    F1 += eta_s + eta_gust + eta_a_jig
+
+    Fl = xloads.lags_statespacestructure(q0, q1, ql, Ahat, B0hat, B1hat)
+    Fl += xloads.lags_statespacegust(t, xgust, Flgust)
+
+    return jnp.hstack([F1, F2, Fl])
+
+def dq_20g189l(t, q, *args):
+    """Linear lamped structure with statespace aero and gust"""
+    # State space with gust
+    (omega, states,
+     Ahat, B0hat, B1hat, Chat, D0hat, D1hat, eta_a_jig, xgust, F1gust, Flgust) = args[0]
+
+    q1 = q[states['q1']]
+    q2 = q[states['q2']]
+    q0 = -q2 / omega
+    ql = q[states['ql']]
+
+    eta_s = xloads.eta_statespacestructure(q0, q1, ql, Chat, D0hat, D1hat)
+    eta_gust = xloads.eta_statespacegust(t, xgust, F1gust)
+
+    F1, F2 = common.f_12l(omega, q1, q2)
+    F1 += eta_s + eta_gust + eta_a_jig
+
+    Fl = xloads.lags_statespacestructure(q0, q1, ql, Ahat, B0hat, B1hat)
+    Fl += xloads.lags_statespacegust(t, xgust, Flgust)
+
+    return jnp.hstack([F1, F2, Fl])
+
+
 # SHARPy
 def dq_20G189(t, q, *args):
     """Clamped structure with gravity, statespace aero and gust"""
     # State space with gust
     (gamma1, gamma2, omega, phi1l, psi2l, force_gravity, 
-     states, X_xdelta, C0ab, component_names, num_nodes, 
-     component_nodes, component_father, Ahat, B0hat, B1hat, Bwhat, Chat, D0hat, D1hat, Dwhat, eta_a_jig, xgust, F1gust, Flgust) = args[0]
+     states, X_xdelta, C0ab, component_names, num_nodes, component_nodes, component_father,
+     Ahat, B0hat, B1hat, Chat, D0hat, D1hat, eta_a_jig, xgust, F1gust, Flgust) = args[0]
 
     q1 = q[states['q1']]
     q2 = q[states['q2']]
