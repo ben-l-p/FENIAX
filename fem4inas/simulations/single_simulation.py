@@ -14,7 +14,7 @@ class SingleSimulation(Simulation, cls_name="single"):
             sys.set_solver()
             sys.set_xloading()
             sys.set_states()
-            sys.set_ic(q0=None)
+            sys.set_ic(q0=sys.settings.q0_input)
             sys.solve()
             sys.build_solution()
             #self._post_run(k, sol_obj)

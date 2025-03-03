@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Sequence
+from typing import Sequence, Optional
 import pathlib
 import jax.numpy as jnp
 import pathlib
@@ -522,6 +522,10 @@ class Dsystem(DataContainer):
         default=None)
     solver_settings: str = dfield(
         "Settings for the solver", default=None)
+
+    q0_input: Optional[jnp.array] = dfield(
+        "Input states for the solver", default=None)
+
     q0treatment: int = dfield(
         """Modal velocities, q1, and modal forces, q2, are the main variables
         in the intrinsic structural description,

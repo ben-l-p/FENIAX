@@ -1,4 +1,4 @@
-from  fem4inas.systems.system import System
+from fem4inas.systems.system import System
 import fem4inas.systems.sollibs as sollibs
 import fem4inas.intrinsic.dq_static as dq_static
 import fem4inas.intrinsic.dq_dynamic as dq_dynamic
@@ -9,6 +9,7 @@ import fem4inas.intrinsic.initcond as initcond
 import fem4inas.intrinsic.args as libargs
 
 import jax.numpy as jnp
+
 
 class IntrinsicSystem(System, cls_name="intrinsic"):
 
@@ -24,9 +25,9 @@ class IntrinsicSystem(System, cls_name="intrinsic"):
         self.fem = fem
         self.sol = sol
         self.config = config
-        #self._set_xloading()
-        #self._set_generator()
-        #self._set_solver()
+        # self._set_xloading()
+        # self._set_generator()
+        # self._set_solver()
 
     def set_ic(self, q0):
         if q0 is None:
@@ -41,15 +42,15 @@ class IntrinsicSystem(System, cls_name="intrinsic"):
                             init_f = v[0]
                         else:
                             init_f = getattr(initcond.Container, v[0])
-                        x = init_f(*v[1], fem=self.fem) #6xNn inputs to approx (e.g. a velocity field).
+                        x = init_f(*v[1], fem=self.fem)  # 6xNn inputs to approx (e.g. a velocity field).
                         # function to calculate qs
                         init_x = initcond.mapper[self.settings.init_mapper[k]]
                         sol_lstsq = init_x(self.sol.data.modes, x)
-                        qi0 = sol_lstsq[0] # TODO: save to sol
+                        qi0 = sol_lstsq[0]  # TODO: save to sol
                     self.q0 = self.q0.at[self.settings.states[k]].set(qi0)
             if 'qr' in list(self.settings.states.keys()):
                 if (self.settings.init_states is None or
-                    'qr' not in self.settings.init_states.keys()): # set rotational quaternions
+                        'qr' not in self.settings.init_states.keys()):  # set rotational quaternions
                     # if they have not been set before
                     qr0 = jnp.hstack([jnp.array([1., 0., 0., 0.])] *
                                      (len(self.settings.states['qr']) // 4))
@@ -68,7 +69,7 @@ class IntrinsicSystem(System, cls_name="intrinsic"):
             self.settings.xloads.build_gravity(self.fem.Ma,
                                                self.fem.Mfe_order)
         if self.settings.aero is not None:
-            import fem4inas.intrinsic.aero as aero            
+            import fem4inas.intrinsic.aero as aero
             approx = self.settings.aero.approx.capitalize()
             aeroobj = aero.Registry.create_instance(f"Aero{approx}",
                                                     self.settings,
@@ -113,8 +114,10 @@ class IntrinsicSystem(System, cls_name="intrinsic"):
         sol.add_container('DynamicSystem', label=self.name,
                           q=qs, X1=X1, X2=X2, X3=X3,
                           Rab=Rab, ra=ra)
+
     def save(self):
         pass
+
 
 class StaticIntrinsic(IntrinsicSystem, cls_name="static_intrinsic"):
 
@@ -135,7 +138,7 @@ class StaticIntrinsic(IntrinsicSystem, cls_name="static_intrinsic"):
             self.settings.xloads.build_gravity(self.fem.Ma,
                                                self.fem.Mfe_order)
         if self.settings.aero is not None:
-            import fem4inas.intrinsic.aero as aero            
+            import fem4inas.intrinsic.aero as aero
             approx = self.settings.aero.approx.capitalize()
             aeroobj = aero.Registry.create_instance(f"Aero{approx}",
                                                     self.settings,
@@ -185,11 +188,11 @@ class StaticIntrinsic(IntrinsicSystem, cls_name="static_intrinsic"):
                                                   self.sol,
                                                   self.fem
                                                   )
-        self.sol.add_container('StaticSystem', label="_"+self.name,
-                          q=self.qs, X2=X2, X3=X3,
-                          Cab=Cab, ra=ra)
+        self.sol.add_container('StaticSystem', label="_" + self.name,
+                               q=self.qs, X2=X2, X3=X3,
+                               Cab=Cab, ra=ra)
         if self.settings.save:
-            self.sol.save_container('StaticSystem', label="_"+self.name)
+            self.sol.save_container('StaticSystem', label="_" + self.name)
 
     def build_solution_loop(self):
 
@@ -212,12 +215,13 @@ class StaticIntrinsic(IntrinsicSystem, cls_name="static_intrinsic"):
             X3.append(X3t)
             Cab.append(Cabt)
             ra.append(rat)
-            
-        self.sol.add_container('StaticSystem', label="_"+self.name,
-                          q=self.qs, X2=jnp.array(X2), X3=jnp.array(X3),
-                          Cab=jnp.array(Cab), ra=jnp.array(ra))
+
+        self.sol.add_container('StaticSystem', label="_" + self.name,
+                               q=self.qs, X2=jnp.array(X2), X3=jnp.array(X3),
+                               Cab=jnp.array(Cab), ra=jnp.array(ra))
         if self.settings.save:
-            self.sol.save_container('StaticSystem', label="_"+self.name)
+            self.sol.save_container('StaticSystem', label="_" + self.name)
+
 
 class DynamicIntrinsic(IntrinsicSystem, cls_name="dynamic_intrinsic"):
 
@@ -233,7 +237,7 @@ class DynamicIntrinsic(IntrinsicSystem, cls_name="dynamic_intrinsic"):
                                                self.fem.Mfe_order,
                                                )
         if self.settings.aero is not None:
-            import fem4inas.intrinsic.aero as aero            
+            import fem4inas.intrinsic.aero as aero
             approx = self.settings.aero.approx.capitalize()
             aeroobj = aero.Registry.create_instance(f"Aero{approx}",
                                                     self.settings,
@@ -251,7 +255,7 @@ class DynamicIntrinsic(IntrinsicSystem, cls_name="dynamic_intrinsic"):
                 gustobj.set_solution(self.sol, self.settings.name)
 
     def set_system(self):
-        
+
         label = self.settings.label
         print(f"***** Setting intrinsic Dynamic system with label {label}")
         self.dFq = getattr(dq_dynamic, label)
@@ -276,7 +280,7 @@ class DynamicIntrinsic(IntrinsicSystem, cls_name="dynamic_intrinsic"):
         self.qs = self.states_puller(sol)
 
     def build_solution_loop(self):
-        #return
+        # return
         # q1 = qs[self.settings.q1_index, :]
         # q2 = qs[self.settings.q2_index, :]
         X2 = []
@@ -296,12 +300,12 @@ class DynamicIntrinsic(IntrinsicSystem, cls_name="dynamic_intrinsic"):
             X3.append(X3t)
             Cab.append(Cabt)
             ra.append(rat)
-            
-        self.sol.add_container('DynamicSystem', label="_"+self.name,
-                          q=self.qs, X2=jnp.array(X2), X3=jnp.array(X3),
-                          Cab=jnp.array(Cab), ra=jnp.array(ra))
+
+        self.sol.add_container('DynamicSystem', label="_" + self.name,
+                               q=self.qs, X2=jnp.array(X2), X3=jnp.array(X3),
+                               Cab=jnp.array(Cab), ra=jnp.array(ra))
         if self.settings.save:
-            self.sol.save_container('DynamicSystem', label="_"+self.name)
+            self.sol.save_container('DynamicSystem', label="_" + self.name)
 
     def build_solution(self):
 
@@ -312,7 +316,7 @@ class DynamicIntrinsic(IntrinsicSystem, cls_name="dynamic_intrinsic"):
         X2 = postprocess.compute_internalforces(self.sol.data.modes.phi2l,
                                                 self.qs[:, self.settings.states['q2']])
         X3 = postprocess.compute_strains(self.sol.data.modes.psi2l,
-                                         self.qs[:, self.settings.states['q2']])        
+                                         self.qs[:, self.settings.states['q2']])
         if self.settings.bc1.lower() == "clamped":
             tn = len(self.qs)
             ra0 = jnp.broadcast_to(self.fem.X[0], (tn, 3))
@@ -335,4 +339,4 @@ class DynamicIntrinsic(IntrinsicSystem, cls_name="dynamic_intrinsic"):
                                q=self.qs, X1=X1, X2=X2, X3=X3,
                                Cab=Cab, ra=ra, t=self.settings.t)
         if self.settings.save:
-            self.sol.save_container('DynamicSystem', label="_"+self.name)
+            self.sol.save_container('DynamicSystem', label="_" + self.name)
